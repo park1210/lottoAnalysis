@@ -1,0 +1,17 @@
+jupyterlab
+notebook
+pandas
+numpy
+matplotlib
+scipy
+scikit-learn
+statsmodels
+requests
+beautifulsoup4
+lxml
+xgboost
+mlxtend
+joblib
+openpyxl
+seaborn
+pytest

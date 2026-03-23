@@ -1,0 +1,12 @@
+services:
+  jupyter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lotto-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../app:/workspace
+    working_dir: /workspace
+    restart: unless-stopped
