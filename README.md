@@ -45,6 +45,12 @@ python app/main.py all --source excel --window 20 --test-ratio 0.2 --random-seed
 pytest app/tests
 ```
 
+자동 수집 관련 안내:
+
+- `auto`, `auto_browser` 소스는 코드상 남겨두었지만 현재는 구현 및 검증 진행 중입니다.
+- 동행복권 사이트의 접근 제한 때문에 환경에 따라 정상 동작하지 않을 수 있습니다.
+- 현재 프로젝트의 기본 데이터 수집 경로는 `excel` 기준으로 사용하는 것을 권장합니다.
+
 ## 📁 3. 프로젝트 구조
 
 ```text

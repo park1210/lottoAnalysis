@@ -58,7 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     data_parser = subparsers.add_parser("data", help="Collect/load and preprocess lotto data.")
-    data_parser.add_argument("--source", choices=["excel", "auto"], default="excel")
+    # 'auto' and 'auto_browser' are exposed for ongoing development, but
+    # 'excel' remains the recommended stable source today.
+    data_parser.add_argument("--source", choices=["excel", "auto", "auto_browser"], default="excel")
     data_parser.add_argument("--start-round", type=int, default=1)
     data_parser.add_argument("--end-round", type=int, default=None)
 
@@ -74,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     model_parser.add_argument("--backtest-step-size", type=int, default=30)
 
     all_parser = subparsers.add_parser("all", help="Run data, features, and model pipeline end-to-end.")
-    all_parser.add_argument("--source", choices=["excel", "auto"], default="excel")
+    all_parser.add_argument("--source", choices=["excel", "auto", "auto_browser"], default="excel")
     all_parser.add_argument("--start-round", type=int, default=1)
     all_parser.add_argument("--end-round", type=int, default=None)
     all_parser.add_argument("--window", type=int, default=20)
