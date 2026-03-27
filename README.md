@@ -47,7 +47,7 @@ pytest app/tests
 
 자동 수집 관련 안내:
 
-- `auto`, `auto_browser` 소스는 코드상 남겨두었지만 현재는 구현 및 검증 진행 중입니다.
+- 기존 `auto`, `auto_browser` 경로 대신 HTML 기반 동기화를 `app` 내부에서 사용합니다.
 - 동행복권 사이트의 접근 제한 때문에 환경에 따라 정상 동작하지 않을 수 있습니다.
 - 현재 프로젝트의 기본 데이터 수집 경로는 `excel` 기준으로 사용하는 것을 권장합니다.
 
@@ -111,3 +111,41 @@ lotto-analysis/
 - Machine Learning: `scikit-learn`, `xgboost`, `mlxtend`, `joblib`
 - Test: `pytest`
 - Workflow: `Git`, `GitHub`
+
+## Collector Workflow
+
+- The analysis app under `app/` is still Excel-first, but it now syncs the workbook from a lightweight HTML source before loading it.
+- The canonical workbook is `app/data/raw/lotto_history_latest.xlsx`.
+- Sync updates that one workbook in place instead of creating a new Excel file every run.
+- The current sync source is the per-round HTML result page on pyony.com, not the removed official JSON endpoint.
+- Because the sync uses `requests + BeautifulSoup`, it can run inside Docker without a browser dependency.
+- `run_pipeline.ps1` now starts Docker only; the sync happens inside the app when the Excel source is loaded.
+
+```powershell
+.\run_pipeline.ps1
+.\run_pipeline.ps1 -Build
+```
+
+## Current Sync Path
+
+- The official `getLottoNumber` JSON endpoint is no longer used as the primary source.
+- Lotto history sync now lives inside `app/src/data/sync_lotto_html.py`.
+- The app syncs `app/data/raw/lotto_history_latest.xlsx` from a lightweight HTML source before loading Excel data.
+- The current source is the per-round result page on `pyony.com`.
+- Because the sync uses `requests + BeautifulSoup`, it is light enough to run inside Docker.
+
+## How To Run
+
+1. Start Docker as before.
+
+```powershell
+docker compose -f docker/docker-compose.yml up --build
+```
+
+2. Run commands inside the running container when needed.
+
+```powershell
+docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
+docker compose -f docker/docker-compose.yml exec jupyter python main.py data --source excel
+docker compose -f docker/docker-compose.yml exec jupyter python main.py all --source excel --window 20 --test-ratio 0.2 --random-seed 42
+```

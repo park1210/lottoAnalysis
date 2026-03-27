@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
-import pandas as pd
 
 from src.config import PROCESSED_LOTTO_FILE
 from src.data.load_data import load_lotto_source
 from src.data.preprocess import preprocess_lotto_data, save_processed_lotto
+from src.data.sync_lotto_html import sync_lotto_history_html
 from src.data.validate_data import (
     validate_number_ranges,
     validate_processed_columns,
@@ -21,7 +19,7 @@ def run_data_pipeline(
     source: str = "excel",
     start_round: int = 1,
     end_round: int | None = None,
-) -> Path:
+):
     raw_df = load_lotto_source(source=source, start_round=start_round, end_round=end_round)
     clean_df = preprocess_lotto_data(raw_df)
     validate_processed_columns(clean_df)
@@ -33,6 +31,10 @@ def run_data_pipeline(
 
 def run_feature_pipeline(window: int = 20):
     return build_feature_dataset(window=window)
+
+
+def run_sync_pipeline():
+    return sync_lotto_history_html()
 
 
 def run_model_pipeline(
@@ -58,11 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     data_parser = subparsers.add_parser("data", help="Collect/load and preprocess lotto data.")
-    # 'auto' and 'auto_browser' are exposed for ongoing development, but
-    # 'excel' remains the recommended stable source today.
-    data_parser.add_argument("--source", choices=["excel", "auto", "auto_browser"], default="excel")
+    data_parser.add_argument("--source", choices=["excel"], default="excel")
     data_parser.add_argument("--start-round", type=int, default=1)
     data_parser.add_argument("--end-round", type=int, default=None)
+
+    subparsers.add_parser("sync", help="Sync the canonical lotto Excel workbook from the HTML source.")
 
     feature_parser = subparsers.add_parser("features", help="Build model features.")
     feature_parser.add_argument("--window", type=int, default=20)
@@ -76,7 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     model_parser.add_argument("--backtest-step-size", type=int, default=30)
 
     all_parser = subparsers.add_parser("all", help="Run data, features, and model pipeline end-to-end.")
-    all_parser.add_argument("--source", choices=["excel", "auto", "auto_browser"], default="excel")
+    all_parser.add_argument("--source", choices=["excel"], default="excel")
     all_parser.add_argument("--start-round", type=int, default=1)
     all_parser.add_argument("--end-round", type=int, default=None)
     all_parser.add_argument("--window", type=int, default=20)
@@ -105,6 +107,11 @@ def main() -> None:
     if args.command == "features":
         feature_df = run_feature_pipeline(window=args.window)
         print(f"Feature dataset shape: {feature_df.shape}")
+        return
+
+    if args.command == "sync":
+        output_path = run_sync_pipeline()
+        print(f"Synced raw data saved to: {output_path}")
         return
 
     if args.command == "model":

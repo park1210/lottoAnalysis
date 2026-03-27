@@ -4,6 +4,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: lotto-jupyter
+    init: true
+    ipc: host
     ports:
       - "8888:8888"
     volumes:
