@@ -112,40 +112,61 @@ lotto-analysis/
 - Test: `pytest`
 - Workflow: `Git`, `GitHub`
 
-## Collector Workflow
+## Run Guide
 
-- The analysis app under `app/` is still Excel-first, but it now syncs the workbook from a lightweight HTML source before loading it.
-- The canonical workbook is `app/data/raw/lotto_history_latest.xlsx`.
-- Sync updates that one workbook in place instead of creating a new Excel file every run.
-- The current sync source is the per-round HTML result page on pyony.com, not the removed official JSON endpoint.
-- Because the sync uses `requests + BeautifulSoup`, it can run inside Docker without a browser dependency.
-- `run_pipeline.ps1` now starts Docker only; the sync happens inside the app when the Excel source is loaded.
+The project still uses the local Excel workbook as the raw data source, but the workbook is now updated from an HTML result page instead of the removed official JSON endpoint.
 
-```powershell
-.\run_pipeline.ps1
-.\run_pipeline.ps1 -Build
-```
+- Canonical raw workbook: `app/data/raw/lotto_history_latest.xlsx`
+- Sync logic: `app/src/data/sync_lotto_html.py`
+- Current HTML source: `pyony.com` per-round lotto result page
+- Sync behavior: checks the last saved round, fetches only later rounds, and stops immediately when the next round does not exist
 
-## Current Sync Path
+### 1. Start Docker
 
-- The official `getLottoNumber` JSON endpoint is no longer used as the primary source.
-- Lotto history sync now lives inside `app/src/data/sync_lotto_html.py`.
-- The app syncs `app/data/raw/lotto_history_latest.xlsx` from a lightweight HTML source before loading Excel data.
-- The current source is the per-round result page on `pyony.com`.
-- Because the sync uses `requests + BeautifulSoup`, it is light enough to run inside Docker.
-
-## How To Run
-
-1. Start Docker as before.
+This starts the Jupyter container and keeps it running.
 
 ```powershell
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-2. Run commands inside the running container when needed.
+### 2. Open Notebook
+
+After the container starts, Jupyter Notebook/Lab is available in the browser.
+
+- URL: `http://localhost:8888`
+- You can keep using notebooks in `app/notebooks/` as before.
+
+### 3. Run Sync Only
+
+This updates only the raw Excel workbook. It checks the last stored round and appends new rounds only.
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
+```
+
+### 4. Run Data Step
+
+This loads the Excel source, preprocesses it, validates it, and writes the processed dataset.
+
+```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py data --source excel
+```
+
+### 5. Run Full Pipeline
+
+This runs the full workflow: data preprocessing, feature generation, and model execution.
+
+```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py all --source excel --window 20 --test-ratio 0.2 --random-seed 42
 ```
+
+### 6. Command Roles Summary
+
+- `sync`: raw Excel only update
+- `data --source excel`: sync if needed, then preprocess and validate data
+- `all --source excel ...`: sync if needed, then run data, features, and model steps end-to-end
+
+### 7. Terminal Usage
+
+- Run `docker compose -f docker/docker-compose.yml up --build` in one terminal.
+- Run `docker compose ... exec ...` commands in another terminal while the container is running.
