@@ -14,3 +14,4 @@ from .plot_results import (
     plot_hit_distribution,
     plot_holdout_metric_bars,
 )
+from .report_exports import save_report_figure, save_report_table

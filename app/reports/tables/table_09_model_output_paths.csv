@@ -1,0 +1,10 @@
+﻿artifact,path
+holdout_summary,/workspace/models/results/holdout_summary.csv
+holdout_draw_results,/workspace/models/results/holdout_draw_results.csv
+backtest_results,/workspace/models/results/backtest_results.csv
+backtest_summary,/workspace/models/results/backtest_summary.csv
+metadata,/workspace/models/results/run_metadata.json
+artifact_logistic_regression,/workspace/models/artifacts/logistic_regression.joblib
+artifact_random_forest,/workspace/models/artifacts/random_forest.joblib
+artifact_xgboost,/workspace/models/artifacts/xgboost.joblib
+artifact_classifier_chain,/workspace/models/artifacts/classifier_chain.joblib

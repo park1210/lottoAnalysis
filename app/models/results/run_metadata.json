@@ -1,0 +1,28 @@
+{
+  "window": 20,
+  "test_ratio": 0.2,
+  "random_seed": 42,
+  "holdout_model_names": [
+    "freq_heuristic",
+    "gap_heuristic",
+    "random_baseline",
+    "logistic_regression",
+    "random_forest",
+    "xgboost",
+    "classifier_chain"
+  ],
+  "backtest_model_names": [
+    "freq_heuristic",
+    "gap_heuristic",
+    "random_baseline",
+    "logistic_regression"
+  ],
+  "include_backtest": true,
+  "backtest_initial_train_size": 600,
+  "backtest_test_size": 30,
+  "backtest_step_size": 30,
+  "max_backtest_folds": null,
+  "n_rows": 1197,
+  "n_train_rows": 957,
+  "n_test_rows": 240
+}

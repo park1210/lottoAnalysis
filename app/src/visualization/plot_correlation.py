@@ -6,31 +6,33 @@ import seaborn as sns
 
 def plot_sum_distribution(sum_series):
     sum_mean = sum_series.mean()
-    plt.figure(figsize=(12, 6))
-    sns.histplot(sum_series, bins=25, kde=True, color="slateblue")
-    plt.axvline(sum_mean, color="crimson", linestyle="--", label=f"Mean ({sum_mean:.1f})")
-    plt.title("Distribution of Main-Number Sum")
-    plt.xlabel("Sum of six main numbers")
-    plt.ylabel("Count")
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.histplot(sum_series, bins=25, kde=True, color="slateblue", ax=ax)
+    ax.axvline(sum_mean, color="crimson", linestyle="--", label=f"Mean ({sum_mean:.1f})")
+    ax.set_title("Distribution of Main-Number Sum")
+    ax.set_xlabel("Sum of six main numbers")
+    ax.set_ylabel("Count")
+    ax.legend()
     plt.tight_layout()
     plt.show()
+    return fig
 
 
 def plot_sum_over_time(rounds, sum_values, rolling_mean):
-    plt.figure(figsize=(14, 6))
-    plt.plot(rounds, sum_values, alpha=0.35, label="Round sum")
-    plt.plot(rounds, rolling_mean, color="crimson", linewidth=2, label="20-round rolling mean")
-    plt.title("Main-Number Sum Over Time")
-    plt.xlabel("Round")
-    plt.ylabel("Sum")
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.plot(rounds, sum_values, alpha=0.35, label="Round sum")
+    ax.plot(rounds, rolling_mean, color="crimson", linewidth=2, label="20-round rolling mean")
+    ax.set_title("Main-Number Sum Over Time")
+    ax.set_xlabel("Round")
+    ax.set_ylabel("Sum")
+    ax.legend()
     plt.tight_layout()
     plt.show()
+    return fig
 
 
 def plot_correlation_heatmap(corr, mask=None):
-    plt.figure(figsize=(13, 11))
+    fig, ax = plt.subplots(figsize=(13, 11))
     sns.heatmap(
         corr,
         cmap="coolwarm",
@@ -40,7 +42,9 @@ def plot_correlation_heatmap(corr, mask=None):
         mask=mask,
         square=True,
         cbar_kws={"shrink": 0.8},
+        ax=ax,
     )
-    plt.title("Pairwise Correlation Heatmap for Main Numbers")
+    ax.set_title("Pairwise Correlation Heatmap for Main Numbers")
     plt.tight_layout()
     plt.show()
+    return fig

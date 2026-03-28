@@ -31,16 +31,18 @@ def plot_holdout_metric_bars(summary_df):
 
     plt.tight_layout()
     plt.show()
+    return fig
 
 
 def plot_hit_distribution(hit_distribution):
-    plt.figure(figsize=(12, 6))
-    sns.barplot(data=hit_distribution, x="hit_count", y="share", hue="model")
-    plt.title("Holdout Hit Distribution by Model")
-    plt.xlabel("Hit count")
-    plt.ylabel("Share of draws")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.barplot(data=hit_distribution, x="hit_count", y="share", hue="model", ax=ax)
+    ax.set_title("Holdout Hit Distribution by Model")
+    ax.set_xlabel("Hit count")
+    ax.set_ylabel("Share of draws")
     plt.tight_layout()
     plt.show()
+    return fig
 
 
 def plot_backtest_metric_bars(summary_df):
@@ -76,13 +78,15 @@ def plot_backtest_metric_bars(summary_df):
 
     plt.tight_layout()
     plt.show()
+    return fig
 
 
 def plot_backtest_stability(backtest_results):
-    plt.figure(figsize=(12, 6))
-    sns.lineplot(data=backtest_results, x="fold", y="avg_hit", hue="model", marker="o")
-    plt.title("Rolling Backtest Average Hit by Fold")
-    plt.xlabel("Backtest fold")
-    plt.ylabel("Average hit")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.lineplot(data=backtest_results, x="fold", y="avg_hit", hue="model", marker="o", ax=ax)
+    ax.set_title("Rolling Backtest Average Hit by Fold")
+    ax.set_xlabel("Backtest fold")
+    ax.set_ylabel("Average hit")
     plt.tight_layout()
     plt.show()
+    return fig

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 
@@ -11,6 +12,7 @@ from src.config import (
     BACKTEST_SUMMARY_FILE,
     HOLDOUT_DRAW_RESULTS_FILE,
     HOLDOUT_SUMMARY_FILE,
+    MODEL_ARTIFACT_DIR,
     MODEL_OUTPUT_DIR,
     MODEL_RUN_METADATA_FILE,
     PROCESSED_LOTTO_FILE,
@@ -130,7 +132,7 @@ def run_holdout_experiments(
     data: dict[str, pd.DataFrame],
     random_seed: int = 42,
     model_names: list[str] | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, object]]:
     X_train = data["X_train"]
     X_test = data["X_test"]
     y_train = data["y_train"]
@@ -139,6 +141,7 @@ def run_holdout_experiments(
 
     results = []
     builders = build_model_builders(random_seed)
+    trained_models: dict[str, object] = {}
 
     for model_name in selected_model_names:
         if model_name == "freq_heuristic":
@@ -171,6 +174,7 @@ def run_holdout_experiments(
         else:
             model = builders[model_name]()
             model.fit(X_train, y_train)
+            trained_models[model_name] = model
             results.append(evaluate_probability_model(model_name, model, X_test, y_test))
 
     holdout_summary = pd.DataFrame(
@@ -187,7 +191,7 @@ def run_holdout_experiments(
     ).sort_values(["avg_hit", "number_level_accuracy"], ascending=False)
 
     holdout_draw_results = pd.concat([result["draw_results"] for result in results], ignore_index=True)
-    return holdout_summary, holdout_draw_results
+    return holdout_summary, holdout_draw_results, trained_models
 
 
 def evaluate_model_on_split(
@@ -295,9 +299,11 @@ def save_experiment_outputs(
     backtest_results: pd.DataFrame,
     backtest_summary: pd.DataFrame,
     metadata: dict,
+    trained_models: dict[str, object],
     output_dir: Path = MODEL_OUTPUT_DIR,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    MODEL_ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
     holdout_summary.to_csv(HOLDOUT_SUMMARY_FILE, index=False, encoding="utf-8-sig")
     holdout_draw_results.to_csv(HOLDOUT_DRAW_RESULTS_FILE, index=False, encoding="utf-8-sig")
@@ -308,13 +314,22 @@ def save_experiment_outputs(
         encoding="utf-8",
     )
 
-    return {
+    artifact_paths: dict[str, Path] = {}
+    for model_name, model in trained_models.items():
+        artifact_path = MODEL_ARTIFACT_DIR / f"{model_name}.joblib"
+        joblib.dump(model, artifact_path)
+        artifact_paths[model_name] = artifact_path
+
+    paths = {
         "holdout_summary": HOLDOUT_SUMMARY_FILE,
         "holdout_draw_results": HOLDOUT_DRAW_RESULTS_FILE,
         "backtest_results": BACKTEST_RESULTS_FILE,
         "backtest_summary": BACKTEST_SUMMARY_FILE,
         "metadata": MODEL_RUN_METADATA_FILE,
     }
+    for model_name, artifact_path in artifact_paths.items():
+        paths[f"artifact_{model_name}"] = artifact_path
+    return paths
 
 
 def run_full_model_suite(
@@ -333,7 +348,7 @@ def run_full_model_suite(
     resolved_holdout_model_names = resolve_model_names(holdout_model_names, DEFAULT_HOLDOUT_MODEL_NAMES)
     resolved_backtest_model_names = resolve_model_names(backtest_model_names, DEFAULT_BACKTEST_MODEL_NAMES)
 
-    holdout_summary, holdout_draw_results = run_holdout_experiments(
+    holdout_summary, holdout_draw_results, trained_models = run_holdout_experiments(
         data,
         random_seed=random_seed,
         model_names=resolved_holdout_model_names,
@@ -384,6 +399,7 @@ def run_full_model_suite(
         backtest_results,
         backtest_summary,
         metadata,
+        trained_models,
     )
 
     return {
