@@ -114,7 +114,7 @@ lotto-analysis/
 
 ## Run Guide
 
-The project still uses the local Excel workbook as the raw data source, but the workbook is now updated from an HTML result page instead of the removed official JSON endpoint.
+The main working style of this project is Jupyter notebook based. The CLI in `main.py` is still available, but it is intended as a helper tool for sync and batch execution rather than the primary analysis interface.
 
 - Canonical raw workbook: `app/data/raw/lotto_history_latest.xlsx`
 - Sync logic: `app/src/data/sync_lotto_html.py`
@@ -123,7 +123,7 @@ The project still uses the local Excel workbook as the raw data source, but the 
 
 ### 1. Start Docker
 
-This starts the Jupyter container and keeps it running.
+This starts the Jupyter container and keeps it running. In normal use, this is the main entry point.
 
 ```powershell
 docker compose -f docker/docker-compose.yml up --build
@@ -134,27 +134,26 @@ docker compose -f docker/docker-compose.yml up --build
 After the container starts, Jupyter Notebook/Lab is available in the browser.
 
 - URL: `http://localhost:8888`
-- You can keep using notebooks in `app/notebooks/` as before.
+- Main analysis flow: `app/notebooks/01_data_collection.ipynb` to `06_model_evaluation.ipynb`
+- If your main goal is visualization and interactive analysis, the notebook workflow is the recommended path.
 
-### 3. Run Sync Only
+### 3. Optional CLI Helpers
 
-This updates only the raw Excel workbook. It checks the last stored round and appends new rounds only.
+The commands below are optional helper commands. They are useful when you want to sync data quickly or run the full pipeline in batch mode outside the notebook flow.
+
+Sync only:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
 ```
 
-### 4. Run Data Step
-
-This loads the Excel source, preprocesses it, validates it, and writes the processed dataset.
+Data preprocessing only:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py data --source excel
 ```
 
-### 5. Run Full Pipeline
-
-This runs the full workflow: data preprocessing, feature generation, and model execution.
+Full batch pipeline:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py all --source excel --window 20 --test-ratio 0.2 --random-seed 42
@@ -162,9 +161,10 @@ docker compose -f docker/docker-compose.yml exec jupyter python main.py all --so
 
 ### 6. Command Roles Summary
 
-- `sync`: raw Excel only update
-- `data --source excel`: sync if needed, then preprocess and validate data
-- `all --source excel ...`: sync if needed, then run data, features, and model steps end-to-end
+- `sync`: updates the raw Excel workbook only
+- `data --source excel`: syncs if needed, then preprocesses and validates the data
+- `all --source excel ...`: syncs if needed, then runs data, feature, and model steps end-to-end
+- notebooks: recommended primary workflow for interactive analysis, visualization, and interpretation
 
 ### 7. Terminal Usage
 
