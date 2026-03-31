@@ -95,6 +95,55 @@ Suggested saved outputs:
 
 - Table: `reports/tables/table_08_feature_summary.csv`
 
+## Contextual Extension
+
+One realistic extension is to test whether draw profiles differ across contextual variables rather than trying to use those variables as strong predictors.
+
+The most defensible starting point is calendar context:
+
+- Month
+- Season
+- Year
+- Day of month
+
+These variables can be derived directly from draw dates without requiring new external scraping.
+
+In the current notebook design, date context is constructed by mapping each round to its draw date and then deriving:
+
+- `month` and `month_name`
+- `season`
+- `year`
+- `day_of_month`
+
+The contextual notebook now emphasizes two analysis layers:
+
+- Number distribution analysis:
+  compare the `1..45` number-frequency share across month, season, year, and day-of-month groups
+- Pattern distribution analysis:
+  compare grouped distributions of `sum_main`, `odd_count`, and `low_count` using boxplots and simple group tests
+
+After that, the project can still be extended with optional external datasets:
+
+- Weather merged by draw date, for example daily Seoul weather
+- News intensity merged by draw week, for example article volume or topic counts
+
+Those variables should be treated as exploratory covariates, not causal drivers of lotto outcomes.
+
+Suggested saved outputs:
+
+- Figure: `reports/figures/fig_11_context_month_number_heatmap.png`
+- Figure: `reports/figures/fig_12_context_month_pattern_boxplots.png`
+- Figure: `reports/figures/fig_13_context_season_number_heatmap.png`
+- Figure: `reports/figures/fig_14_context_year_number_heatmap.png`
+- Figure: `reports/figures/fig_15_context_year_pattern_boxplots.png`
+- Figure: `reports/figures/fig_16_context_day_number_heatmap.png`
+- Figure: `reports/figures/fig_17_context_day_pattern_boxplots.png`
+- Table: `reports/tables/table_10_context_month_frequency_tests.csv`
+- Table: `reports/tables/table_11_context_season_frequency_tests.csv`
+- Table: `reports/tables/table_12_context_year_frequency_tests.csv`
+- Table: `reports/tables/table_13_context_day_frequency_tests.csv`
+- Table: `reports/tables/table_14_context_pattern_test_summary.csv`
+
 ## Modeling
 
 The modeling stage includes:

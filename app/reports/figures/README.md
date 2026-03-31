@@ -12,3 +12,10 @@ Recommended report figures to save from notebooks:
 - `fig_08_draw_level_hit_distribution.png`
 - `fig_09_backtest_model_comparison.png`
 - `fig_10_backtest_trend.png`
+- `fig_11_context_month_number_heatmap.png`
+- `fig_12_context_month_pattern_boxplots.png`
+- `fig_13_context_season_number_heatmap.png`
+- `fig_14_context_year_number_heatmap.png`
+- `fig_15_context_year_pattern_boxplots.png`
+- `fig_16_context_day_number_heatmap.png`
+- `fig_17_context_day_pattern_boxplots.png`

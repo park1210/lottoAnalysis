@@ -4,6 +4,16 @@ from .correlation_analysis import (
     calculate_consecutive_overlap,
     calculate_correlation_matrix,
 )
+from .contextual_analysis import (
+    FIRST_DRAW_DATE,
+    add_calendar_context_features,
+    attach_draw_date,
+    build_context_number_frequency,
+    build_context_profile,
+    merge_external_context,
+    run_context_frequency_tests,
+    run_context_mean_tests,
+)
 from .frequency_analysis import (
     build_frequency_comparison_frame,
     calculate_bonus_frequency,
