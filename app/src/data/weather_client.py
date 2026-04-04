@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import ConnectionError, HTTPError, ReadTimeout
 from urllib3.util.retry import Retry
 
 
@@ -111,25 +112,30 @@ def _build_dataframe_from_lines(lines: list[str], columns: list[str]) -> pd.Data
     return pd.DataFrame(rows, columns=columns)
 
 
-def _expand_to_hour_marks(timestamps: list[datetime]) -> list[datetime]:
-    expanded: set[pd.Timestamp] = set()
+def _nearest_hour_marks(timestamps: list[datetime]) -> list[datetime]:
+    rounded: set[pd.Timestamp] = set()
     for ts in pd.to_datetime(timestamps):
-        floor = pd.Timestamp(ts).floor("h")
-        expanded.add(floor)
-        if pd.Timestamp(ts) != floor:
-            expanded.add(floor + pd.Timedelta(hours=1))
-    return [ts.to_pydatetime() for ts in sorted(expanded)]
+        current = pd.Timestamp(ts)
+        floor = current.floor("h")
+        ceil = floor if current == floor else floor + pd.Timedelta(hours=1)
+        nearest = ceil if (ceil - current) <= (current - floor) else floor
+        rounded.add(nearest)
+    return [ts.to_pydatetime() for ts in sorted(rounded)]
 
 
 def fetch_hourly_weather(stn_ids: list[int] | list[str], timestamps: list[datetime], service_key: str | None = None) -> pd.DataFrame:
     records: list[pd.DataFrame] = []
-    unique_timestamps = _expand_to_hour_marks(timestamps)
+    unique_timestamps = _nearest_hour_marks(timestamps)
     session = _build_session()
     for target_dt in unique_timestamps:
         tm = pd.Timestamp(target_dt).strftime("%Y%m%d%H%M")
         for stn_id in stn_ids:
             params = {"tm": tm, "stn": str(stn_id)}
-            text = _request_weather_api(ASOS_HOURLY_ENDPOINT, params=params, service_key=service_key, session=session)
+            try:
+                text = _request_weather_api(ASOS_HOURLY_ENDPOINT, params=params, service_key=service_key, session=session)
+            except (HTTPError, ReadTimeout, ConnectionError):
+                time.sleep(REQUEST_SLEEP_SECONDS * 4)
+                continue
             lines = _extract_data_lines(text)
             payload_df = _build_dataframe_from_lines(lines, HOURLY_COLUMNS)
             if not payload_df.empty:
@@ -159,9 +165,9 @@ def fetch_daily_weather(stn_ids: list[int] | list[str], dates: list[datetime], s
 def fetch_daily_weather_optional(stn_ids: list[int] | list[str], dates: list[datetime], service_key: str | None = None) -> pd.DataFrame:
     try:
         return fetch_daily_weather(stn_ids=stn_ids, dates=dates, service_key=service_key)
-    except requests.HTTPError as exc:
+    except (requests.HTTPError, ReadTimeout, ConnectionError) as exc:
         response = getattr(exc, "response", None)
-        if response is not None and response.status_code == 403:
+        if response is None or response.status_code in {403, 401, 429, 500, 502, 503, 504}:
             return pd.DataFrame(columns=["station_id", "station_name", "date", "daily_tavg", "daily_tmin", "daily_tmax", "daily_precip_mm"])
         raise
 

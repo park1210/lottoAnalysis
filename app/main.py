@@ -6,7 +6,7 @@ from src.config import PROCESSED_LOTTO_FILE
 from src.data.load_data import load_lotto_source
 from src.data.preprocess import preprocess_lotto_data, save_processed_lotto
 from src.data.sync_lotto_html import sync_lotto_history_html
-from src.data.sync_weather_context import sync_weather_context
+from src.data.sync_weather_context import build_weather_context_from_cache, fetch_weather_observations, sync_weather_context
 from src.data.validate_data import (
     validate_number_ranges,
     validate_processed_columns,
@@ -42,6 +42,14 @@ def run_weather_sync_pipeline(force: bool = False):
     return sync_weather_context(force=force)
 
 
+def run_weather_fetch_pipeline(force: bool = False):
+    return fetch_weather_observations(force=force)
+
+
+def run_weather_build_pipeline():
+    return build_weather_context_from_cache()
+
+
 def run_model_pipeline(
     window: int = 20,
     test_ratio: float = 0.2,
@@ -71,7 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("sync", help="Sync the canonical lotto Excel workbook from the HTML source.")
 
-    weather_parser = subparsers.add_parser("weather-sync", help="Sync weather metadata and draw-context weather features.")
+    weather_fetch_parser = subparsers.add_parser("weather-fetch", help="Fetch and cache weather observations only.")
+    weather_fetch_parser.add_argument("--force", action="store_true", help="Force refetch weather observations from the remote API.")
+
+    subparsers.add_parser("weather-build", help="Build weather draw context from cached weather observations.")
+
+    weather_parser = subparsers.add_parser("weather-sync", help="Fetch weather observations and then build weather draw context.")
     weather_parser.add_argument("--force", action="store_true", help="Force refetch weather observations from the remote API.")
 
     feature_parser = subparsers.add_parser("features", help="Build model features.")
@@ -120,6 +133,21 @@ def main() -> None:
     if args.command == "sync":
         output_path = run_sync_pipeline()
         print(f"Synced raw data saved to: {output_path}")
+        return
+
+    if args.command == "weather-fetch":
+        bundle = run_weather_fetch_pipeline(force=args.force)
+        print(f"Draw metadata rows: {len(bundle.metadata_df)}")
+        print(f"Hourly weather rows: {len(bundle.hourly_df)}")
+        print(f"Daily weather rows: {len(bundle.daily_df)}")
+        return
+
+    if args.command == "weather-build":
+        bundle = run_weather_build_pipeline()
+        print(f"Draw metadata rows: {len(bundle.metadata_df)}")
+        print(f"Hourly weather rows: {len(bundle.hourly_df)}")
+        print(f"Daily weather rows: {len(bundle.daily_df)}")
+        print(f"Weather context rows: {len(bundle.context_df)}")
         return
 
     if args.command == "weather-sync":

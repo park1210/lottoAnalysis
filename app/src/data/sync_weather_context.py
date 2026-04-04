@@ -33,6 +33,8 @@ DRAW_METADATA_COLUMNS = [
     "metadata_quality",
     "notes",
 ]
+HOURLY_FETCH_BATCH_SIZE = 50
+
 WEATHER_CONTEXT_COLUMNS = [
     "round",
     "draw_date",
@@ -123,6 +125,13 @@ def _resolve_draw_datetime_used(row: pd.Series) -> pd.Timestamp:
     return pd.to_datetime(row["scheduled_draw_datetime"])
 
 
+def _nearest_hour_timestamp(value: pd.Timestamp | datetime) -> pd.Timestamp:
+    ts = pd.Timestamp(value)
+    floor = ts.floor("h")
+    ceil = floor if ts == floor else floor + pd.Timedelta(hours=1)
+    return ceil if (ceil - ts) <= (ts - floor) else floor
+
+
 def collect_weather_observations(
     draw_meta_df: pd.DataFrame,
     existing_hourly_df: pd.DataFrame | None = None,
@@ -156,9 +165,10 @@ def collect_weather_observations(
 
     needed_hourly = []
     for dt in draw_datetimes:
-        dt_key = pd.Timestamp(dt).strftime("%Y%m%d%H%M")
+        query_dt = _nearest_hour_timestamp(dt)
+        dt_key = query_dt.strftime("%Y%m%d%H%M")
         if any((station_id, dt_key) not in existing_hourly_keys for station_id in station_ids):
-            needed_hourly.append(dt)
+            needed_hourly.append(query_dt)
 
     needed_daily = []
     for d in draw_dates:
@@ -166,14 +176,19 @@ def collect_weather_observations(
         if any((station_id, d_key) not in existing_daily_keys for station_id in station_ids):
             needed_daily.append(d)
 
-    new_hourly_df = fetch_hourly_weather(station_ids, timestamps=needed_hourly) if needed_hourly else pd.DataFrame()
-
-    hourly_df = pd.concat([existing_hourly_df, new_hourly_df], ignore_index=True, sort=False)
-    if not hourly_df.empty:
-        hourly_df["observed_at"] = pd.to_datetime(hourly_df["observed_at"], errors="coerce")
-        hourly_df = hourly_df.drop_duplicates(subset=["station_id", "observed_at"]).sort_values(["station_id", "observed_at"]).reset_index(drop=True)
-
+    hourly_df = existing_hourly_df.copy()
     daily_df = existing_daily_df.copy()
+
+    if needed_hourly:
+        for start in range(0, len(needed_hourly), HOURLY_FETCH_BATCH_SIZE):
+            batch = needed_hourly[start:start + HOURLY_FETCH_BATCH_SIZE]
+            batch_hourly_df = fetch_hourly_weather(station_ids, timestamps=batch)
+            hourly_df = pd.concat([hourly_df, batch_hourly_df], ignore_index=True, sort=False)
+            if not hourly_df.empty:
+                hourly_df["observed_at"] = pd.to_datetime(hourly_df["observed_at"], errors="coerce")
+                hourly_df = hourly_df.drop_duplicates(subset=["station_id", "observed_at"]).sort_values(["station_id", "observed_at"]).reset_index(drop=True)
+            save_weather_observations(hourly_df, daily_df)
+
     # Save hourly progress first so long-running collection is not lost if daily access is unavailable.
     save_weather_observations(hourly_df, daily_df)
 
@@ -324,9 +339,52 @@ def save_weather_context(df: pd.DataFrame, path: Path = WEATHER_CONTEXT_FILE) ->
     return path
 
 
-def sync_weather_context(force: bool = False) -> WeatherSyncBundle:
+
+
+def load_cached_weather_observations() -> tuple[pd.DataFrame, pd.DataFrame]:
+    if not WEATHER_OBSERVATION_FILE.exists():
+        return pd.DataFrame(), pd.DataFrame()
+    merged = pd.read_csv(WEATHER_OBSERVATION_FILE, parse_dates=["observed_at"], low_memory=False)
+    hourly_df = merged[merged["source_type"] == "hourly"].copy() if "source_type" in merged.columns else merged.copy()
+    daily_df = merged[merged["source_type"] == "daily"].copy() if "source_type" in merged.columns else pd.DataFrame()
+    if "date" in daily_df.columns:
+        daily_df["date"] = pd.to_datetime(daily_df["date"], errors="coerce").dt.date
+    return hourly_df, daily_df
+
+
+def fetch_weather_observations(force: bool = False) -> WeatherSyncBundle:
     draw_meta_df = load_draw_metadata()
     hourly_df, daily_df = load_or_fetch_weather_observations(draw_meta_df, force=force)
+    return WeatherSyncBundle(
+        metadata_df=draw_meta_df,
+        hourly_df=hourly_df,
+        daily_df=daily_df,
+        context_df=pd.DataFrame(columns=WEATHER_CONTEXT_COLUMNS),
+    )
+
+
+def build_weather_context_from_cache() -> WeatherSyncBundle:
+    draw_meta_df = load_draw_metadata()
+    hourly_df, daily_df = load_cached_weather_observations()
+    context_df = merge_weather_with_draws(draw_meta_df, hourly_df, daily_df)
+    save_weather_context(context_df)
+    return WeatherSyncBundle(
+        metadata_df=draw_meta_df,
+        hourly_df=hourly_df,
+        daily_df=daily_df,
+        context_df=context_df,
+    )
+
+def sync_weather_context(force: bool = False) -> WeatherSyncBundle:
+    draw_meta_df = load_draw_metadata()
+    try:
+        hourly_df, daily_df = load_or_fetch_weather_observations(draw_meta_df, force=force)
+    except Exception:
+        # Fall back to any cached observations collected so far so we can still build a partial context file.
+        if WEATHER_OBSERVATION_FILE.exists():
+            hourly_df, daily_df = load_cached_weather_observations()
+        else:
+            raise
     context_df = merge_weather_with_draws(draw_meta_df, hourly_df, daily_df)
     save_weather_context(context_df)
     return WeatherSyncBundle(
