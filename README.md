@@ -54,7 +54,7 @@ pytest app/tests
 ## 📁 3. 프로젝트 구조
 
 ```text
-lotto-analysis/
+002_lottoAnalysis/
 ├─ app/
 │  ├─ data/
 │  │  ├─ raw/
@@ -116,6 +116,9 @@ lotto-analysis/
 
 The main working style of this project is Jupyter notebook based. The CLI in `main.py` is still available, but it is intended as a helper tool for sync and batch execution rather than the primary analysis interface.
 
+- Current project path: `C:\Users\wondt\2026\002_Project\002_lottoAnalysis`
+- Project root in the structure examples below should be read as `002_lottoAnalysis/`
+
 - Canonical raw workbook: `app/data/raw/lotto_history_latest.xlsx`
 - Sync logic: `app/src/data/sync_lotto_html.py`
 - Current HTML source: `pyony.com` per-round lotto result page
@@ -145,6 +148,27 @@ Sync only:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
+```
+
+Weather sync only:
+
+```powershell
+docker compose -f docker/docker-compose.yml exec jupyter python main.py weather-sync
+```
+
+`weather-sync` runs the weather metadata + weather-context pipeline. The recommended setup is to store the API auth key in the project-root `.env` file.
+
+Example `.env`:
+
+```env
+KMA_AUTH_KEY=your-issued-key
+```
+
+After that:
+
+```powershell
+docker compose -f docker/docker-compose.yml up --build
+docker compose -f docker/docker-compose.yml exec jupyter python main.py weather-sync
 ```
 
 Data preprocessing only:
