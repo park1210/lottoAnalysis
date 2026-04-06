@@ -1,0 +1,13 @@
+﻿variable,non_null,missing,missing_ratio
+daily_precip_mm,0,1217,1.0
+daily_tavg,0,1217,1.0
+daily_tmax,0,1217,1.0
+daily_tmin,0,1217,1.0
+humidity_at_draw,1217,0,0.0
+precip_1h,1217,0,0.0
+precip_24h,1217,0,0.0
+precip_6h,1217,0,0.0
+pressure_at_draw,1217,0,0.0
+snow_at_draw,7,1210,0.9942
+temp_at_draw,1217,0,0.0
+wind_at_draw,1217,0,0.0
