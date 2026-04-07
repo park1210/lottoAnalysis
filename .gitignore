@@ -37,3 +37,5 @@ Thumbs.db
 
 # Generated model/data outputs
 app/data/processed/model_outputs/
+app/data/external/*.csv
+app/reports/tables/*.csv

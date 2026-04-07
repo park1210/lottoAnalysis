@@ -174,7 +174,7 @@ def fetch_daily_weather_optional(stn_ids: list[int] | list[str], dates: list[dat
 
 def normalize_hourly_weather(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
-        return pd.DataFrame(columns=["station_id", "station_name", "observed_at", "temp_c", "humidity_pct", "precip_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"])
+        return pd.DataFrame(columns=["station_id", "station_name", "observed_at", "temp_c", "humidity_pct", "precip_mm", "precip_day_cumulative_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"])
 
     normalized = df.rename(columns={
         "STN": "station_id",
@@ -182,16 +182,20 @@ def normalize_hourly_weather(df: pd.DataFrame) -> pd.DataFrame:
         "TA": "temp_c",
         "HM": "humidity_pct",
         "RN": "precip_mm",
+        "RN_DAY": "precip_day_cumulative_mm",
         "WS": "wind_speed_ms",
         "PA": "pressure_hpa",
         "SD_HR3": "snow_cm",
     }).copy()
     normalized["observed_at"] = pd.to_datetime(normalized["observed_at"], format="%Y%m%d%H%M", errors="coerce")
-    for col in ["temp_c", "humidity_pct", "precip_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"]:
+    for col in ["temp_c", "humidity_pct", "precip_mm", "precip_day_cumulative_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"]:
         normalized[col] = pd.to_numeric(normalized[col], errors="coerce")
+    # KMA uses negative sentinel values for unavailable precipitation and snow fields.
+    for col in ["precip_mm", "precip_day_cumulative_mm", "snow_cm"]:
+        normalized.loc[normalized[col] < 0, col] = pd.NA
     normalized["station_id"] = normalized["station_id"].astype(str)
     normalized["station_name"] = pd.Series([pd.NA] * len(normalized), dtype="string")
-    keep = ["station_id", "station_name", "observed_at", "temp_c", "humidity_pct", "precip_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"]
+    keep = ["station_id", "station_name", "observed_at", "temp_c", "humidity_pct", "precip_mm", "precip_day_cumulative_mm", "wind_speed_ms", "pressure_hpa", "snow_cm"]
     return normalized[keep].drop_duplicates(subset=["station_id", "observed_at"]).sort_values(["station_id", "observed_at"]).reset_index(drop=True)
 
 

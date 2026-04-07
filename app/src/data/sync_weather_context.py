@@ -47,6 +47,8 @@ WEATHER_CONTEXT_COLUMNS = [
     "wind_at_draw",
     "pressure_at_draw",
     "snow_at_draw",
+    "precip_at_draw",
+    "precip_day_cumulative_at_draw",
     "precip_1h",
     "precip_6h",
     "precip_24h",
@@ -302,6 +304,16 @@ def merge_weather_with_draws(draw_meta_df: pd.DataFrame, hourly_df: pd.DataFrame
         snow_at_draw = nearest.get("snow_cm")
         humidity_at_draw = nearest.get("humidity_pct")
         temp_at_draw = nearest.get("temp_c")
+        precip_at_draw = nearest.get("precip_mm")
+        precip_day_cumulative_at_draw = nearest.get("precip_day_cumulative_mm")
+        is_raining = bool(
+            (pd.notna(precip_at_draw) and float(precip_at_draw) > 0)
+            or (pd.notna(precip_day_cumulative_at_draw) and float(precip_day_cumulative_at_draw) > 0)
+            or precip_1h > 0
+            or precip_6h > 0
+            or precip_24h > 0
+            or (pd.notna(daily_row.get("daily_precip_mm")) and float(daily_row.get("daily_precip_mm")) > 0)
+        )
 
         rows.append(
             {
@@ -316,6 +328,8 @@ def merge_weather_with_draws(draw_meta_df: pd.DataFrame, hourly_df: pd.DataFrame
                 "wind_at_draw": nearest.get("wind_speed_ms"),
                 "pressure_at_draw": nearest.get("pressure_hpa"),
                 "snow_at_draw": snow_at_draw,
+                "precip_at_draw": precip_at_draw,
+                "precip_day_cumulative_at_draw": precip_day_cumulative_at_draw,
                 "precip_1h": precip_1h,
                 "precip_6h": precip_6h,
                 "precip_24h": precip_24h,
@@ -323,7 +337,7 @@ def merge_weather_with_draws(draw_meta_df: pd.DataFrame, hourly_df: pd.DataFrame
                 "daily_tmin": daily_row.get("daily_tmin"),
                 "daily_tmax": daily_row.get("daily_tmax"),
                 "daily_precip_mm": daily_row.get("daily_precip_mm"),
-                "is_raining": precip_1h > 0,
+                "is_raining": is_raining,
                 "is_snowing": bool(pd.notna(snow_at_draw) and float(snow_at_draw) > 0),
                 "temp_bin": _categorize_temperature(temp_at_draw),
                 "humidity_bin": _categorize_humidity(humidity_at_draw),

@@ -1,4 +1,4 @@
-# Lotto Analysis Final Report
+﻿# Lotto Analysis Final Report
 
 ## Project Goal
 
@@ -144,6 +144,102 @@ Suggested saved outputs:
 - Table: `reports/tables/table_13_context_day_frequency_tests.csv`
 - Table: `reports/tables/table_14_context_pattern_test_summary.csv`
 
+## Weather Extension
+
+The project now includes a weather-context layer built from KMA API Hub observations.
+
+Current workflow:
+
+- `weather-fetch`: fetch and cache raw weather observations
+- `weather-build`: build draw-level context from the cached observations
+- Canonical files:
+  - `app/data/external/draw_metadata.csv`
+  - `app/data/external/weather_observations.csv`
+  - `app/data/external/weather_draw_context.csv`
+
+Current saved weather report assets are present for this section and can be embedded directly from:
+
+![Weather distributions](figures/fig_18_weather_distribution.png)
+![Weather boxplots](figures/fig_19_weather_boxplots.png)
+![Weather occurrence](figures/fig_20_weather_occurrence.png)
+![Temperature pattern comparison](figures/fig_21_weather_temp_pattern_boxplots.png)
+![Humidity pattern comparison](figures/fig_22_weather_humidity_pattern_boxplots.png)
+![Binary weather pattern comparison](figures/fig_23_weather_binary_pattern_boxplots.png)
+![Temperature-bin number heatmap](figures/fig_24_weather_temp_number_heatmap.png)
+![Humidity-bin number heatmap](figures/fig_25_weather_humidity_number_heatmap.png)
+
+Suggested saved outputs:
+
+- Figure: `reports/figures/fig_18_weather_distribution.png`
+- Figure: `reports/figures/fig_19_weather_boxplots.png`
+- Figure: `reports/figures/fig_20_weather_occurrence.png`
+- Figure: `reports/figures/fig_21_weather_temp_pattern_boxplots.png`
+- Figure: `reports/figures/fig_22_weather_humidity_pattern_boxplots.png`
+- Figure: `reports/figures/fig_23_weather_binary_pattern_boxplots.png`
+- Figure: `reports/figures/fig_24_weather_temp_number_heatmap.png`
+- Figure: `reports/figures/fig_25_weather_humidity_number_heatmap.png`
+- Table: `reports/tables/table_15_weather_quality_summary.csv`
+- Table: `reports/tables/table_16_weather_occurrence_summary.csv`
+- Table: `reports/tables/table_17_weather_pattern_test_summary.csv`
+- Table: `reports/tables/table_18_weather_temp_number_frequency.csv`
+- Table: `reports/tables/table_19_weather_humidity_number_frequency.csv`
+
+Measured weather-data status from the latest saved tables:
+
+- `temp_at_draw`, `humidity_at_draw`, `wind_at_draw`, `pressure_at_draw`, `precip_1h`, `precip_6h`, `precip_24h` are complete for all `1217` draws
+- `daily_tavg`, `daily_tmin`, `daily_tmax`, `daily_precip_mm` are currently unavailable in the saved run
+- `snow_at_draw` is sparse and only populated for a very small subset of draws
+- `rain_flag` is currently zero across the saved context file, which indicates that the first weather build used an overly strict window-based rain proxy
+- `snow_flag` is rare (`6` draws, about `0.5%`)
+
+The weather context builder has now been updated so that rain is inferred from the nearest hourly observation (`RN`) and the same-hour cumulative daily rain field (`RN_DAY`) rather than only from a pre-draw aggregation window. After rerunning `weather-build`, `08_weather_context_analysis.ipynb`, and `09_weather_feature_modeling.ipynb`, the saved weather artifacts should be refreshed with a more realistic rain proxy.
+
+Current statistical interpretation from `table_17_weather_pattern_test_summary.csv`:
+
+- Kruskal tests for `sum_main`, `odd_count`, and `low_count` across `temp_bin` and `humidity_bin` do not show small p-values
+- Mann-Whitney tests for snow vs. non-snow draws also do not show small p-values
+- In the current saved run, the weather grouping variables do not provide strong evidence of large draw-pattern shifts
+
+This does not prove that weather is irrelevant, but it does suggest that the currently available weather features act more like exploratory context than strong predictive signals.
+
+## Weather-Aware Modeling
+
+The weather-feature modeling notebook compares whether contextual variables add incremental predictive value beyond the original temporal baseline.
+
+Current saved outputs for this stage are:
+
+![Weather feature holdout comparison](figures/fig_26_weather_feature_holdout_comparison.png)
+![Weather feature backtest comparison](figures/fig_27_weather_feature_backtest_comparison.png)
+![Weather feature backtest trend](figures/fig_28_weather_feature_backtest_trend.png)
+
+Suggested saved outputs:
+
+- Figure: `reports/figures/fig_26_weather_feature_holdout_comparison.png`
+- Figure: `reports/figures/fig_27_weather_feature_backtest_comparison.png`
+- Figure: `reports/figures/fig_28_weather_feature_backtest_trend.png`
+- Table: `reports/tables/table_20_weather_feature_holdout_summary.csv`
+- Table: `reports/tables/table_21_weather_feature_backtest_summary.csv`
+- Table: `reports/tables/table_22_weather_feature_backtest_results.csv`
+
+Measured results from the latest `09_weather_feature_modeling.ipynb` run:
+
+- Holdout `avg_hit`:
+  - `base`: `0.8708`
+  - `base_plus_calendar`: `0.8583`
+  - `base_plus_calendar_weather`: `0.8458`
+  - `calendar_weather_only`: `0.8208`
+- Rolling backtest `mean_avg_hit`:
+  - `base`: `0.8389`
+  - `base_plus_calendar_weather`: `0.8111`
+  - `base_plus_calendar`: `0.7944`
+  - `calendar_weather_only`: `0.7667`
+
+Interpretation:
+
+- The existing temporal baseline remains the strongest feature set in both holdout and backtest comparisons.
+- Calendar variables slightly reduce performance, and the current calendar+weather block reduces it further.
+- Weather and calendar context are therefore more useful as explanatory covariates in this project than as direct performance-improving predictors in the current logistic-regression setup.
+
 ## Modeling
 
 The modeling stage includes:
@@ -252,3 +348,9 @@ Recommended follow-up work:
 - Execute the pytest suite regularly during refactoring
 - Add CLI-level automation around the notebook workflow
 - Expand this report by embedding the saved figures and tables from the latest notebook run
+- Rerun weather-build, 8_weather_context_analysis.ipynb, and 9_weather_feature_modeling.ipynb after the updated rain-proxy logic so the saved weather outputs reflect non-window rain detection
+- Test recent-round-only weather modeling (for example the most recent 300 to 500 draws) to see whether later-year context behaves differently from the full-history aggregate
+- Add lagged weather-regime features such as dry/wet streak length, recent mean temperature, and short-term humidity regime shifts
+- Compare extreme-weather subsets against matched non-extreme draws rather than only broad categorical bins
+- Extend the feature-modeling notebook with tree-based importance summaries to see whether weather variables are consistently ignored or just weakly ranked
+
