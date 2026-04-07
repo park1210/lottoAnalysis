@@ -2,6 +2,9 @@
 humidity_bin,low_count,kruskal,4.918571304953935,0.17785778566070684
 humidity_bin,odd_count,kruskal,1.5200177905712235,0.6776580009854059
 humidity_bin,sum_main,kruskal,3.7595013428197834,0.2886320769548243
+rain_flag,low_count,mannwhitneyu,49455.5,0.2938240393116197
+rain_flag,odd_count,mannwhitneyu,50495.5,0.46951423093258327
+rain_flag,sum_main,mannwhitneyu,51266.5,0.6436825548851279
 snow_flag,low_count,mannwhitneyu,4058.5,0.6090407630585548
 snow_flag,odd_count,mannwhitneyu,2725.0,0.27356892446189296
 snow_flag,sum_main,mannwhitneyu,2866.0,0.37207146595128127
