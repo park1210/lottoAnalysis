@@ -6,120 +6,87 @@
 ![XGBoost](https://img.shields.io/badge/Model-XGBoost-006400?style=flat-square)
 ![GitHub](https://img.shields.io/badge/Version%20Control-GitHub-181717?style=flat-square&logo=github&logoColor=white)
 
-한국 로또(6/45) 과거 데이터를 바탕으로 수집, 전처리, 시각화, 통계 분석, 모델 비교를 수행하는 프로젝트입니다.
+This project studies Korean Lotto 6/45 history through a notebook-first workflow. The current scope covers:
 
-## 🎯 1. 주제 및 선정 이유
+- raw lotto sync and preprocessing
+- exploratory and statistical analysis
+- calendar and weather context analysis
+- baseline and extended model comparison
+- report-ready figure and table exports
 
-- 이 프로젝트는 데이터를 해석할 때 시각화를 중요하게 본다는 점에서 출발했습니다.
-- 로또 데이터 역시 숫자 목록으로만 보기보다, 번호 빈도 분포, 합계 분포, 홀짝 비율, 시계열 변화 등을 시각화하면 패턴 존재 여부를 더 직관적으로 확인할 수 있다고 생각했습니다.
-- 그래서 "로또는 정말 랜덤인가?"라는 질문을 데이터 시각화와 통계 분석을 통해 검토하는 방향으로 주제를 선정했습니다.
-- 목표는 단순한 당첨 예측보다, 과거 데이터에서 예측 가능한 구조가 실제로 존재하는지 확인하는 것입니다.
+## Project Status
 
-## ⚙️ 2. 설정 및 실행 방법
+The project currently includes notebook steps `01` through `10`.
 
-설치:
+- `01_data_collection.ipynb`: data collection overview
+- `02_eda.ipynb`: exploratory visualization
+- `03_statistical_tests.ipynb`: randomness-oriented tests
+- `04_feature_engineering.ipynb`: temporal feature construction
+- `05_model_baseline.ipynb`: baseline model training and artifact export
+- `06_model_evaluation.ipynb`: evaluation plots and summaries
+- `07_contextual_analysis.ipynb`: calendar context analysis
+- `08_weather_context_analysis.ipynb`: weather context analysis
+- `09_weather_feature_modeling.ipynb`: weather-aware feature comparison
+- `10_model_family_comparison.ipynb`: feature-set and model-family comparison
 
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r app\requirements.txt
-```
+## Current Findings
 
-실행:
+### Baseline Modeling
 
-```powershell
-python app/main.py data --source excel
-python app/main.py features --window 20
-python app/main.py model --window 20 --test-ratio 0.2 --random-seed 42
-```
+From the baseline model suite:
 
-전체 파이프라인:
+- best holdout `avg_hit`: `classifier_chain = 0.9000`
+- next best holdout `avg_hit`: `logistic_regression = 0.8708`
+- best rolling backtest `mean_avg_hit`: `random_baseline = 0.8719`
+- `subset_accuracy` remains `0.0` across saved runs
 
-```powershell
-python app/main.py all --source excel --window 20 --test-ratio 0.2 --random-seed 42
-```
+This means the current project still does not show strong evidence that learned models reliably outperform a random-style baseline in a robust way.
 
-테스트:
+### Weather Context
 
-```powershell
-pytest app/tests
-```
+The current weather context file now contains non-zero rain detection.
 
-자동 수집 관련 안내:
+- `rain_flag`: `94` draws, about `7.72%`
+- `snow_flag`: `6` draws, about `0.49%`
 
-- 기존 `auto`, `auto_browser` 경로 대신 HTML 기반 동기화를 `app` 내부에서 사용합니다.
-- 동행복권 사이트의 접근 제한 때문에 환경에 따라 정상 동작하지 않을 수 있습니다.
-- 현재 프로젝트의 기본 데이터 수집 경로는 `excel` 기준으로 사용하는 것을 권장합니다.
+Current weather-group tests do not show strong evidence that rain, snow, temperature bins, or humidity bins materially shift draw patterns.
 
-## 📁 3. 프로젝트 구조
+### Weather-Aware Feature Modeling
 
-```text
-002_lottoAnalysis/
-├─ app/
-│  ├─ data/
-│  │  ├─ raw/
-│  │  └─ processed/
-│  ├─ notebooks/
-│  ├─ reports/
-│  ├─ src/
-│  │  ├─ analysis/
-│  │  ├─ data/
-│  │  ├─ features/
-│  │  ├─ models/
-│  │  └─ visualization/
-│  ├─ tests/
-│  ├─ main.py
-│  └─ requirements.txt
-├─ docker/
-├─ Makefile
-└─ README.md
-```
+From `09_weather_feature_modeling.ipynb`:
 
-## 📊 4. 분석 결과
+- holdout `avg_hit`
+  - `base = 0.8708`
+  - `base_plus_calendar = 0.8583`
+  - `base_plus_calendar_weather = 0.8458`
+  - `calendar_weather_only = 0.8292`
+- backtest `mean_avg_hit`
+  - `base = 0.8389`
+  - `base_plus_calendar_weather = 0.8139`
+  - `base_plus_calendar = 0.7944`
+  - `calendar_weather_only = 0.7722`
 
-### 모델 비교
+Interpretation: calendar and weather variables are currently more useful as explanatory context than as performance-improving predictors.
 
-| Model | Holdout avg_hit | Holdout number_level_accuracy | Backtest mean_avg_hit | Backtest mean_number_level_accuracy |
-| --- | ---: | ---: | ---: | ---: |
-| **logistic_regression** | **0.891** | **0.773** | **0.868** | **0.772** |
-| **random_baseline** | **0.883** | **0.773** | **0.872** | **0.772** |
-| classifier_chain | 0.883 | 0.773 | - | - |
-| xgboost | 0.812 | 0.769 | - | - |
-| freq_heuristic | 0.766 | 0.767 | 0.782 | 0.768 |
-| random_forest | 0.749 | 0.767 | - | - |
-| gap_heuristic | 0.715 | 0.765 | 0.805 | 0.769 |
+### Model-Family Comparison
 
-### 어떤 기준이 좋은가
+From `10_model_family_comparison.ipynb`:
 
-- `subset_accuracy`는 모든 모델이 `0.0`이어서 비교 기준으로 의미가 거의 없었습니다.
-- `number_level_accuracy`는 값이 전반적으로 높게 나와 모델 간 차이를 구분하기에는 한계가 있습니다.
-- 그래서 실제로 몇 개 번호를 맞췄는지 보여주는 `avg_hit`가 가장 해석하기 좋은 기준입니다.
-- 특히 단일 holdout보다 여러 구간에서 반복 검증한 `Backtest mean_avg_hit`를 더 우선적으로 보는 것이 안정적입니다.
+- best holdout combination: `base_plus_pattern + classifier_chain = 0.9042`
+- next best holdout combination: `base + classifier_chain = 0.9000`
+- best backtest combinations are still close to heuristic or weakly-structured baselines
+- `base_plus_context + mlp` matched the top backtest mean by average score, but fold-level paths differ and the model should be interpreted cautiously because MLP remains sensitive to scaling and small-sample instability
 
-### 최종 해석
-
-- Holdout 기준 최고 모델은 **`logistic_regression`** 입니다.
-- 반복 검증인 backtest 기준 최고 모델은 **`random_baseline`** 입니다.
-- 따라서 현재 결과에서는 특정 모델이 랜덤 기준을 뚜렷하게 이겼다고 보기 어렵습니다.
-- 전체적으로는 로또 데이터에서 강한 예측 신호를 찾기 어렵다는 해석이 더 타당합니다.
-
-## 🛠️ 5. 사용된 스킬셋
-
-- Data: `pandas`, `numpy`, `requests`, `openpyxl`
-- Visualization: `matplotlib`, `seaborn`, `jupyterlab`
-- Statistics: `scipy`, `statsmodels`
-- Machine Learning: `scikit-learn`, `xgboost`, `mlxtend`, `joblib`
-- Test: `pytest`
-- Workflow: `Git`, `GitHub`
+Interpretation: richer internal pattern features help more than calendar/weather context, and robust superiority over random-style baselines remains limited.
 
 ## Run Guide
 
 This project is notebook-first. The recommended workflow is:
 
-1. Start Docker and open Jupyter.
-2. Sync lotto/weather data only when you need fresher source data.
-3. Use notebook files for EDA, visualization, contextual analysis, and reporting.
-4. Use `main.py` only as a helper CLI for data sync or batch execution.
+1. start Docker and open Jupyter
+2. sync lotto or weather data only when you need fresher source data
+3. run notebooks for analysis and reporting
+4. use `main.py` as a helper CLI rather than the primary analysis interface
 
 ### Start Docker
 
@@ -127,17 +94,17 @@ This project is notebook-first. The recommended workflow is:
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-Then open Jupyter in the browser:
+Then open Jupyter:
 
 - `http://localhost:8888`
 
-### Lotto Data Collection
+### Lotto Sync
 
-Canonical raw lotto workbook:
+Canonical raw workbook:
 
 - `app/data/raw/lotto_history_latest.xlsx`
 
-Lotto sync command:
+Sync command:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
@@ -145,12 +112,12 @@ docker compose -f docker/docker-compose.yml exec jupyter python main.py sync
 
 Behavior:
 
-- Reads the last saved round from the Excel workbook
-- Fetches only later rounds from the HTML source
-- Stops immediately when the next round does not exist
-- Updates the canonical workbook in place
+- reads the last saved round in the workbook
+- fetches only later HTML rounds
+- stops immediately if the next round is unavailable
+- updates the canonical workbook in place
 
-### Weather Data Collection
+### Weather Sync
 
 Canonical weather files:
 
@@ -160,55 +127,37 @@ Canonical weather files:
 
 Environment setup:
 
-Create a project-root `.env` file:
-
 ```env
 KMA_AUTH_KEY=your-issued-key
 ```
 
-Weather collection is split into two steps.
+Recommended workflow:
 
-1. Fetch raw weather observations from KMA API Hub and cache them:
+1. fetch raw weather observations
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py weather-fetch
 ```
 
-2. Build draw-level weather context from the cached observations:
+2. build draw-level weather context
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py weather-build
 ```
 
-Optional one-shot helper:
+Optional combined helper:
 
 ```powershell
 docker compose -f docker/docker-compose.yml exec jupyter python main.py weather-sync
 ```
 
-Recommended usage:
+Notes:
 
-- Prefer `weather-fetch` when you want to continue filling missing weather history over multiple runs
-- Prefer `weather-build` after fetching, because it is local and much lighter than remote collection
-- Avoid `--force` unless you intentionally want to ignore the existing weather cache and refetch from scratch
+- prefer `weather-fetch` for incremental collection over multiple runs
+- prefer `weather-build` after fetching because it is local and lighter than remote collection
+- avoid `--force` unless you intentionally want to ignore the weather cache and refetch from scratch
 
-### Notebook Guidance
-
-Recommended notebook usage:
-
-- Use notebooks with the stored files, not live remote fetches on every run
-- Lotto analysis notebooks should read the canonical Excel/raw outputs already generated by sync
-- Weather/context notebooks should read `weather_draw_context.csv` after `weather-build`
-- The recommended notebook for weather exploration is `app/notebooks/08_weather_context_analysis.ipynb`
-- The recommended notebook for weather-aware model comparison is `app/notebooks/09_weather_feature_modeling.ipynb`
-
-Recommended interpretation:
-
-- Notebook analysis should treat lotto and weather sync outputs as cached source data
-- The notebook layer should focus on visualization, exploratory analysis, and reporting
-- If you later want fully automated refresh logic inside notebooks, it is better to call the CLI helpers first and then read the generated files, rather than embedding long remote collection logic directly in notebook cells
-
-### Other Helper Commands
+### Other CLI Helpers
 
 Data preprocessing only:
 
@@ -224,42 +173,67 @@ docker compose -f docker/docker-compose.yml exec jupyter python main.py all --so
 
 ### Command Roles Summary
 
-- `sync`: updates the raw lotto Excel workbook only
-- `weather-fetch`: fetches and caches weather observations only
-- `weather-build`: builds draw-level weather context from cached weather observations only
-- `weather-sync`: runs fetch + build in one command
-- `data --source excel`: syncs lotto data if needed, then preprocesses and validates it
-- `all --source excel ...`: runs data, feature, and model steps end-to-end
-- notebooks: recommended primary workflow for interactive analysis, visualization, and interpretation
+- `sync`: update the raw lotto Excel workbook only
+- `weather-fetch`: fetch and cache weather observations only
+- `weather-build`: build draw-level weather context from cached observations only
+- `weather-sync`: run weather fetch + build in one command
+- `data --source excel`: preprocess and validate lotto data
+- `all --source excel ...`: run data, feature, and model steps end-to-end
+- notebooks: primary workflow for visualization, analysis, and interpretation
 
-### Terminal Usage
+## Notebook Guidance
 
-- Run `docker compose -f docker/docker-compose.yml up --build` in one terminal
-- Run `docker compose ... exec ...` commands in another terminal while the container is running
+Recommended notebook usage:
+
+- use stored files, not live remote fetches inside notebook cells
+- lotto notebooks should read the canonical workbook or processed CSVs
+- weather notebooks should read `weather_draw_context.csv` after `weather-build`
+- weather exploration notebook: `app/notebooks/08_weather_context_analysis.ipynb`
+- weather-aware feature notebook: `app/notebooks/09_weather_feature_modeling.ipynb`
+- model-family comparison notebook: `app/notebooks/10_model_family_comparison.ipynb`
+
+## Repository Layout
+
+```text
+002_lottoAnalysis/
+?? app/
+?  ?? data/
+?  ?  ?? raw/
+?  ?  ?? processed/
+?  ?  ?? external/
+?  ?? notebooks/
+?  ?? reports/
+?  ?? src/
+?  ?? tests/
+?? docker/
+?? Makefile
+?? README.md
+```
 
 ## Weather Data Source Policy
 
-The weather data in `app/data/external/` comes from KMA API Hub.
+Weather data in `app/data/external/` comes from KMA API Hub.
 
-Relevant policy references:
+Relevant references:
 
-- KMA API Hub states that provided meteorological/climate data is subject to public KOGL terms: https://apihub.kma.go.kr/apiInfo.do
-- KMA copyright policy says KOGL Type 1 public works may be used freely with source attribution: https://www.kma.go.kr/kma/guide/copyright.jsp
+- KMA API Hub info: https://apihub.kma.go.kr/apiInfo.do
+- KMA copyright policy: https://www.kma.go.kr/kma/guide/copyright.jsp
 
-Practical recommendation for this repository:
+Practical guidance for this repository:
 
-- Uploading derived CSV outputs such as `draw_metadata.csv`, `weather_observations.csv`, and `weather_draw_context.csv` is likely acceptable when source attribution is preserved
-- Keep attribution in this README and in `app/data/external/README.md`
-- Do not commit the private `.env` file or API key
-- If you want the safest minimal-publication approach, commit `draw_metadata.csv` and `weather_draw_context.csv` first, and treat `weather_observations.csv` as optional because it is the largest raw cache file
-
+- derived weather CSV outputs are likely acceptable to share when source attribution is preserved
+- keep attribution in this README and `app/data/external/README.md`
+- never commit `.env` or any private API key
+- the safest minimal-publication approach is to prioritize `draw_metadata.csv` and `weather_draw_context.csv`
 
 ## Suggested Next Analyses
 
-Now that draw-level weather context is available, the most promising next analyses are:
+The most promising follow-up work is now inside the existing lotto-history feature space rather than from adding more external covariates.
 
-- rerun `weather-build`, `08_weather_context_analysis.ipynb`, and `09_weather_feature_modeling.ipynb` after the revised rain proxy so the saved weather outputs reflect nearest-observation rain detection
-- compare model performance with and without calendar + weather features, noting that the current saved `09` run still favors the original temporal baseline over all context-augmented variants
-- add rolling weather regime features such as dry/wet streak length, recent mean temperature, and short humidity-trend features
-- compare number-frequency heatmaps across temperature and humidity groups after filtering to later rounds only
-- test whether extreme-weather subsets behave differently from matched random subsets
+Recommended directions:
+
+- rerun `10_model_family_comparison.ipynb` with scaled MLP inputs to reduce neural-model instability
+- test recent-round-only modeling windows such as the most recent `200`, `300`, or `500` draws
+- add lagged weather-regime features such as dry/wet streak length, recent mean temperature, and short humidity-trend features
+- compare extreme-weather subsets against matched non-extreme draws
+- extend model-family comparison with stronger feature-ranking diagnostics and coefficient/importance summaries

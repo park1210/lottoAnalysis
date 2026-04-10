@@ -1,356 +1,243 @@
-﻿# Lotto Analysis Final Report
+# Lotto Analysis Final Report
 
 ## Project Goal
 
-This project analyzes historical Korean lotto data to answer three main questions:
+This project analyzes historical Korean Lotto 6/45 data to answer three main questions:
 
 1. Does the historical number distribution look materially different from a random process?
-2. Can we build forecasting-oriented features from past draws without leakage?
-3. Do simple or more complex models outperform random guessing in a meaningful way?
+2. Can forecasting-oriented features be built from past draws without leakage?
+3. Do any model and feature combinations outperform random-style baselines in a meaningful and repeatable way?
 
 ## Data Pipeline
 
-The project uses a notebook-first workflow with a canonical raw Excel workbook.
+The project uses a notebook-first workflow with canonical saved files.
 
-- Raw workbook: `app/data/raw/lotto_history_latest.xlsx`
-- Sync entry point: `python main.py sync`
-- Current sync source: HTML round pages
-- Processed dataset: `app/data/processed/lotto_cleaned.csv`
+- raw workbook: `app/data/raw/lotto_history_latest.xlsx`
+- processed lotto file: `app/data/processed/lotto_cleaned.csv`
+- weather metadata: `app/data/external/draw_metadata.csv`
+- weather cache: `app/data/external/weather_observations.csv`
+- draw-level weather context: `app/data/external/weather_draw_context.csv`
 
-The raw data is standardized through preprocessing, validated, and saved as a clean tabular dataset for downstream notebooks and modules.
+The current collection workflow is:
+
+- `python main.py sync` for lotto updates
+- `python main.py weather-fetch` for weather cache collection
+- `python main.py weather-build` for draw-level weather context construction
 
 ## Exploratory Analysis
 
-The exploratory analysis focuses on:
+The exploratory stage focuses on:
 
-- Main-number frequency vs. uniform expectation
-- Bonus-number frequency vs. uniform expectation
-- Odd-even and low-high balance
-- Distribution of the total sum of the six main numbers
-- Time-trend inspection
-- Pairwise correlation between numbers
+- main-number frequency vs uniform expectation
+- bonus-number frequency vs uniform expectation
+- odd-even balance
+- low-high balance
+- total-sum distribution
+- time-trend inspection
+- pairwise number correlation
 
-The purpose of this stage is to look for visible structural bias before applying formal tests.
+Saved EDA assets:
 
-Current saved report assets are present for this section and can be embedded directly from:
-
-![Main number frequency](figures/fig_01_main_number_frequency.png)
-![Bonus number frequency](figures/fig_02_bonus_number_frequency.png)
-![Odd-even pattern](figures/fig_03_odd_even_pattern.png)
-![Low-high split](figures/fig_04_low_high_split.png)
-![Sum distribution](figures/fig_05_sum_distribution.png)
-
-Current status:
-
-- The saved EDA figures on disk should be regenerated once because the earlier notebook export used a generic `plt.gcf()` save pattern, which can produce duplicate blank images.
-- The export cell in `02_eda.ipynb` has now been updated to save the actual returned figure objects.
-
-Suggested saved outputs:
-
-- Figure: `reports/figures/fig_01_main_number_frequency.png`
-- Figure: `reports/figures/fig_02_bonus_number_frequency.png`
-- Figure: `reports/figures/fig_03_odd_even_pattern.png`
-- Figure: `reports/figures/fig_04_low_high_split.png`
-- Figure: `reports/figures/fig_05_sum_distribution.png`
-- Table: `reports/tables/table_02_main_number_frequency.csv`
-- Table: `reports/tables/table_03_bonus_number_frequency.csv`
+- `fig_01_main_number_frequency.png`
+- `fig_02_bonus_number_frequency.png`
+- `fig_03_odd_even_pattern.png`
+- `fig_04_low_high_split.png`
+- `fig_05_sum_distribution.png`
 
 ## Randomness Tests
 
-The statistical testing stage compares real lotto outcomes against Monte Carlo baselines instead of relying on a single random sample.
+The statistical testing stage compares real outcomes against Monte Carlo baselines.
 
-The main checks include:
+Key checks:
 
-- Frequency comparison against a simulated random interval
-- Chi-square test for uniformity
-- KL divergence between real and simulated distributions
-- Consecutive-draw overlap comparison
+- frequency comparison against simulated random draws
+- chi-square test for uniformity
+- KL divergence against simulated distributions
+- consecutive-draw overlap comparison
 
-If these diagnostics remain broadly close to simulated random behavior, the data does not provide strong evidence that the drawing process is non-independent.
+Saved outputs:
 
-Current saved report assets are present for this section and can be embedded directly from:
+- `fig_06_real_vs_random_frequency.png`
+- `fig_06b_consecutive_draw_overlap.png`
+- `table_04_randomness_test_summary.csv`
 
-![Real vs random frequency](figures/fig_06_real_vs_random_frequency.png)
-![Consecutive draw overlap](figures/fig_06b_consecutive_draw_overlap.png)
-
-Suggested saved outputs:
-
-- Figure: `reports/figures/fig_06_real_vs_random_frequency.png`
-- Figure: `reports/figures/fig_06b_consecutive_draw_overlap.png`
-- Table: `reports/tables/table_04_random_frequency_comparison.csv`
-- Table: `reports/tables/table_04_randomness_test_summary.csv`
+Interpretation: the project continues to support a conservative view that the historical data does not show strong evidence of large structural bias away from a random process.
 
 ## Feature Engineering
 
-The feature set is forecasting-oriented rather than descriptive.
+The baseline feature set is forecasting-oriented and currently includes:
 
-It currently includes:
+- rolling recent-frequency features
+- gap features measuring time since each number last appeared
 
-- Rolling frequency features over recent draws
-- Gap features measuring how long it has been since each number last appeared
+These are aligned so each row uses only information available before the target draw.
 
-These features are aligned so that each row uses only information available before the target draw.
+## Calendar Context Extension
 
-Suggested saved outputs:
+The calendar-context notebook derives:
 
-- Table: `reports/tables/table_08_feature_summary.csv`
+- month
+- season
+- year
+- day of month
 
-## Contextual Extension
+It then compares:
 
-One realistic extension is to test whether draw profiles differ across contextual variables rather than trying to use those variables as strong predictors.
+- number-frequency distributions across context groups
+- draw-pattern distributions such as `sum_main`, `odd_count`, and `low_count`
 
-The most defensible starting point is calendar context:
+Saved outputs:
 
-- Month
-- Season
-- Year
-- Day of month
+- `fig_11` to `fig_17`
+- `table_10` to `table_14`
 
-These variables can be derived directly from draw dates without requiring new external scraping.
-
-In the current notebook design, date context is constructed by mapping each round to its draw date and then deriving:
-
-- `month` and `month_name`
-- `season`
-- `year`
-- `day_of_month`
-
-The contextual notebook now emphasizes two analysis layers:
-
-- Number distribution analysis:
-  compare the `1..45` number-frequency share across month, season, year, and day-of-month groups
-- Pattern distribution analysis:
-  compare grouped distributions of `sum_main`, `odd_count`, and `low_count` using boxplots and simple group tests
-
-After that, the project can still be extended with optional external datasets:
-
-- Weather merged by draw date, for example daily Seoul weather
-- News intensity merged by draw week, for example article volume or topic counts
-
-Those variables should be treated as exploratory covariates, not causal drivers of lotto outcomes.
-
-Suggested saved outputs:
-
-- Figure: `reports/figures/fig_11_context_month_number_heatmap.png`
-- Figure: `reports/figures/fig_12_context_month_pattern_boxplots.png`
-- Figure: `reports/figures/fig_13_context_season_number_heatmap.png`
-- Figure: `reports/figures/fig_14_context_year_number_heatmap.png`
-- Figure: `reports/figures/fig_15_context_year_pattern_boxplots.png`
-- Figure: `reports/figures/fig_16_context_day_number_heatmap.png`
-- Figure: `reports/figures/fig_17_context_day_pattern_boxplots.png`
-- Table: `reports/tables/table_10_context_month_frequency_tests.csv`
-- Table: `reports/tables/table_11_context_season_frequency_tests.csv`
-- Table: `reports/tables/table_12_context_year_frequency_tests.csv`
-- Table: `reports/tables/table_13_context_day_frequency_tests.csv`
-- Table: `reports/tables/table_14_context_pattern_test_summary.csv`
+Interpretation: calendar context is useful as a descriptive analysis layer, but it has not yet produced strong evidence of a stable predictive advantage.
 
 ## Weather Extension
 
-The project now includes a weather-context layer built from KMA API Hub observations.
+The weather pipeline builds draw-level weather context from KMA API Hub observations.
 
-Current workflow:
+Saved analysis outputs:
 
-- `weather-fetch`: fetch and cache raw weather observations
-- `weather-build`: build draw-level context from the cached observations
-- Canonical files:
-  - `app/data/external/draw_metadata.csv`
-  - `app/data/external/weather_observations.csv`
-  - `app/data/external/weather_draw_context.csv`
+- `fig_18` to `fig_25`
+- `table_15` to `table_19`
 
-Current saved weather report assets are present for this section and can be embedded directly from:
+Current measured weather status:
 
-![Weather distributions](figures/fig_18_weather_distribution.png)
-![Weather boxplots](figures/fig_19_weather_boxplots.png)
-![Weather occurrence](figures/fig_20_weather_occurrence.png)
-![Temperature pattern comparison](figures/fig_21_weather_temp_pattern_boxplots.png)
-![Humidity pattern comparison](figures/fig_22_weather_humidity_pattern_boxplots.png)
-![Binary weather pattern comparison](figures/fig_23_weather_binary_pattern_boxplots.png)
-![Temperature-bin number heatmap](figures/fig_24_weather_temp_number_heatmap.png)
-![Humidity-bin number heatmap](figures/fig_25_weather_humidity_number_heatmap.png)
-
-Suggested saved outputs:
-
-- Figure: `reports/figures/fig_18_weather_distribution.png`
-- Figure: `reports/figures/fig_19_weather_boxplots.png`
-- Figure: `reports/figures/fig_20_weather_occurrence.png`
-- Figure: `reports/figures/fig_21_weather_temp_pattern_boxplots.png`
-- Figure: `reports/figures/fig_22_weather_humidity_pattern_boxplots.png`
-- Figure: `reports/figures/fig_23_weather_binary_pattern_boxplots.png`
-- Figure: `reports/figures/fig_24_weather_temp_number_heatmap.png`
-- Figure: `reports/figures/fig_25_weather_humidity_number_heatmap.png`
-- Table: `reports/tables/table_15_weather_quality_summary.csv`
-- Table: `reports/tables/table_16_weather_occurrence_summary.csv`
-- Table: `reports/tables/table_17_weather_pattern_test_summary.csv`
-- Table: `reports/tables/table_18_weather_temp_number_frequency.csv`
-- Table: `reports/tables/table_19_weather_humidity_number_frequency.csv`
-
-Measured weather-data status from the latest saved tables:
-
-- `temp_at_draw`, `humidity_at_draw`, `wind_at_draw`, `pressure_at_draw`, `precip_1h`, `precip_6h`, `precip_24h` are complete for all `1217` draws
-- `daily_tavg`, `daily_tmin`, `daily_tmax`, `daily_precip_mm` are currently unavailable in the saved run
-- `snow_at_draw` is sparse and only populated for a very small subset of draws
-- `rain_flag` is currently zero across the saved context file, which indicates that the first weather build used an overly strict window-based rain proxy
-- `snow_flag` is rare (`6` draws, about `0.5%`)
-
-The weather context builder has now been updated so that rain is inferred from the nearest hourly observation (`RN`) and the same-hour cumulative daily rain field (`RN_DAY`) rather than only from a pre-draw aggregation window. After rerunning `weather-build`, `08_weather_context_analysis.ipynb`, and `09_weather_feature_modeling.ipynb`, the saved weather artifacts should be refreshed with a more realistic rain proxy.
+- `temp_at_draw`, `humidity_at_draw`, `wind_at_draw`, and `pressure_at_draw` are available for all `1217` draws
+- `rain_flag` is now non-zero after revising the rain proxy
+- `rain_flag = 94` draws, about `7.72%`
+- `snow_flag = 6` draws, about `0.49%`
+- daily weather aggregates are still unavailable in the saved run
 
 Current statistical interpretation from `table_17_weather_pattern_test_summary.csv`:
 
-- Kruskal tests for `sum_main`, `odd_count`, and `low_count` across `temp_bin` and `humidity_bin` do not show small p-values
-- Mann-Whitney tests for snow vs. non-snow draws also do not show small p-values
-- In the current saved run, the weather grouping variables do not provide strong evidence of large draw-pattern shifts
+- rain vs non-rain group tests do not show small p-values for `sum_main`, `odd_count`, or `low_count`
+- snow vs non-snow tests also do not show small p-values
+- temperature-bin and humidity-bin Kruskal tests do not show strong distribution shifts
 
-This does not prove that weather is irrelevant, but it does suggest that the currently available weather features act more like exploratory context than strong predictive signals.
+Interpretation: weather context is currently more useful as exploratory context than as a strong direct explanatory driver of lotto outcomes.
 
-## Weather-Aware Modeling
+## Weather-Aware Feature Modeling
 
-The weather-feature modeling notebook compares whether contextual variables add incremental predictive value beyond the original temporal baseline.
+`09_weather_feature_modeling.ipynb` compares whether calendar and weather variables improve the temporal baseline.
 
-Current saved outputs for this stage are:
+Saved outputs:
 
-![Weather feature holdout comparison](figures/fig_26_weather_feature_holdout_comparison.png)
-![Weather feature backtest comparison](figures/fig_27_weather_feature_backtest_comparison.png)
-![Weather feature backtest trend](figures/fig_28_weather_feature_backtest_trend.png)
+- `fig_26_weather_feature_holdout_comparison.png`
+- `fig_27_weather_feature_backtest_comparison.png`
+- `fig_28_weather_feature_backtest_trend.png`
+- `table_20_weather_feature_holdout_summary.csv`
+- `table_21_weather_feature_backtest_summary.csv`
+- `table_22_weather_feature_backtest_results.csv`
 
-Suggested saved outputs:
+Measured results:
 
-- Figure: `reports/figures/fig_26_weather_feature_holdout_comparison.png`
-- Figure: `reports/figures/fig_27_weather_feature_backtest_comparison.png`
-- Figure: `reports/figures/fig_28_weather_feature_backtest_trend.png`
-- Table: `reports/tables/table_20_weather_feature_holdout_summary.csv`
-- Table: `reports/tables/table_21_weather_feature_backtest_summary.csv`
-- Table: `reports/tables/table_22_weather_feature_backtest_results.csv`
+- holdout `avg_hit`
+  - `base = 0.8708`
+  - `base_plus_calendar = 0.8583`
+  - `base_plus_calendar_weather = 0.8458`
+  - `calendar_weather_only = 0.8292`
+- rolling backtest `mean_avg_hit`
+  - `base = 0.8389`
+  - `base_plus_calendar_weather = 0.8139`
+  - `base_plus_calendar = 0.7944`
+  - `calendar_weather_only = 0.7722`
 
-Measured results from the latest `09_weather_feature_modeling.ipynb` run:
+Interpretation: the existing temporal baseline remains strongest. Calendar and weather context are better interpreted as explanatory covariates than as direct performance-improving predictors in the current setup.
 
-- Holdout `avg_hit`:
-  - `base`: `0.8708`
-  - `base_plus_calendar`: `0.8583`
-  - `base_plus_calendar_weather`: `0.8458`
-  - `calendar_weather_only`: `0.8208`
-- Rolling backtest `mean_avg_hit`:
-  - `base`: `0.8389`
-  - `base_plus_calendar_weather`: `0.8111`
-  - `base_plus_calendar`: `0.7944`
-  - `calendar_weather_only`: `0.7667`
+## Baseline Modeling
+
+The baseline modeling suite includes:
+
+- `freq_heuristic`
+- `gap_heuristic`
+- `random_baseline`
+- `logistic_regression`
+- `random_forest`
+- `xgboost`
+- `classifier_chain`
+
+Saved outputs:
+
+- `table_05_holdout_summary.csv`
+- `table_06_backtest_summary.csv`
+- `table_07_draw_level_results.csv`
+- `table_08_run_metadata.csv`
+- `table_09_model_output_paths.csv`
+- model artifacts under `app/models/artifacts`
+
+Measured baseline results:
+
+- best holdout `avg_hit`: `classifier_chain = 0.9000`
+- next best holdout `avg_hit`: `logistic_regression = 0.8708`
+- best rolling backtest `mean_avg_hit`: `random_baseline = 0.8719`
+- `logistic_regression` remains close in rolling backtest: `0.8684`
+- all major runs still have `subset_accuracy = 0.0`
+
+Interpretation: no model yet demonstrates a robust and large advantage over random-style baselines.
+
+## Model-Family Comparison
+
+`10_model_family_comparison.ipynb` compares four feature sets across multiple model families.
+
+Feature sets:
+
+- `base`
+- `base_plus_pattern`
+- `base_plus_context`
+- `full_feature_set`
+
+Model families:
+
+- heuristic baselines
+- linear model
+- tree-based models
+- classifier chain
+- shallow neural network
+
+Saved outputs:
+
+- `fig_29_model_family_holdout_heatmap.png`
+- `fig_30_model_family_backtest_heatmap.png`
+- `fig_31_model_family_top_comparison.png`
+- `fig_32_model_family_backtest_trend.png`
+- `table_23_model_family_holdout_summary.csv`
+- `table_24_model_family_backtest_summary.csv`
+- `table_25_model_family_full_results.csv`
+
+Measured results:
+
+- best holdout combination: `base_plus_pattern + classifier_chain = 0.9042`
+- second-best holdout combination: `base + classifier_chain = 0.9000`
+- strong context-heavy combinations did not displace internal-pattern feature sets at the top of holdout ranking
+- best backtest mean includes `random_baseline = 0.8567`
+- `base_plus_context + mlp` matched that backtest mean by average score, but fold-level paths differ and the result should be interpreted cautiously
 
 Interpretation:
 
-- The existing temporal baseline remains the strongest feature set in both holdout and backtest comparisons.
-- Calendar variables slightly reduce performance, and the current calendar+weather block reduces it further.
-- Weather and calendar context are therefore more useful as explanatory covariates in this project than as direct performance-improving predictors in the current logistic-regression setup.
-
-## Modeling
-
-The modeling stage includes:
-
-- Frequency heuristic baseline
-- Gap heuristic baseline
-- Random baseline
-- Logistic regression
-- Random forest
-- XGBoost
-- Classifier chain
-
-Model outputs are saved so that evaluation can be run separately from model construction.
-
-Suggested saved outputs:
-
-- Table: `reports/tables/table_05_holdout_summary.csv`
-- Table: `reports/tables/table_06_backtest_summary.csv`
-- Table: `reports/tables/table_08_run_metadata.csv`
-- Table: `reports/tables/table_09_model_output_paths.csv`
-- Model artifact: `models/artifacts/logistic_regression.joblib`
-- Model artifact: `models/artifacts/random_forest.joblib`
-- Model artifact: `models/artifacts/xgboost.joblib`
-- Model artifact: `models/artifacts/classifier_chain.joblib`
-
-Current status:
-
-- Summary tables were saved successfully.
-- Serialized model artifacts are not yet present in `models/artifacts`.
-- The most likely reason is that `05_model_baseline.ipynb` was executed before model persistence was added to `src/models/model_suite.py`, so the notebook output paths only include CSV and JSON files from that earlier run.
-- The path layout has now also been reorganized so that model summaries and metadata are written under `models/results` and serialized estimators are written under `models/artifacts`.
-
-## Evaluation
-
-The evaluation stage reports:
-
-- Holdout subset accuracy
-- Holdout number-level accuracy
-- Holdout average hit count
-- Rolling backtest averages across folds
-- Draw-level hit distributions
-
-This split makes it easier to compare model families and judge whether added complexity produces a meaningful advantage over heuristics and random guessing.
-
-Suggested saved outputs:
-
-- Figure: `reports/figures/fig_07_holdout_model_comparison.png`
-- Figure: `reports/figures/fig_08_draw_level_hit_distribution.png`
-- Figure: `reports/figures/fig_09_backtest_model_comparison.png`
-- Figure: `reports/figures/fig_10_backtest_trend.png`
-- Table: `reports/tables/table_07_draw_level_results.csv`
-
-Current status:
-
-- Evaluation tables were saved successfully.
-- The four evaluation figures currently on disk appear to be duplicates of the same exported image, so they should be regenerated by rerunning the final export cell in `06_model_evaluation.ipynb`.
-
-## Measured Results
-
-The latest saved run metadata indicates:
-
-- Window size: `20`
-- Train/test split ratio: `0.2`
-- Random seed: `42`
-- Feature rows used for modeling: `1197`
-- Holdout rows: `240`
-- Backtest folds: `19`
-
-Holdout summary from `table_05_holdout_summary.csv`:
-
-- Best `avg_hit`: `classifier_chain` at `0.900`
-- Next best `avg_hit`: `logistic_regression` at `0.871`
-- `random_baseline` remains close at `0.838`
-- All models have `subset_accuracy = 0.0`
-
-Backtest summary from `table_06_backtest_summary.csv`:
-
-- Best `mean_avg_hit`: `random_baseline` at `0.872`
-- `logistic_regression` is close at `0.868`
-- `gap_heuristic` and `freq_heuristic` remain below those two
-- Mean subset accuracy also stays at `0.0`
-
-This means the saved tables are coherent and usable for reporting, even though the evaluation figure export needs one more refresh.
+- richer internal draw-pattern features appear more promising than weather/calendar context for prediction
+- holdout improvements do not automatically transfer to robust rolling-backtest advantages
+- model-family diversity is useful for comparison, but the evidence for a stable predictive edge remains limited
 
 ## Current Interpretation
 
-At this stage, the project is designed less as a claim that lotto outcomes are predictable and more as a structured analysis of whether historical patterns provide usable predictive signal.
+At this stage, the project is best interpreted as a structured investigation into predictive limits rather than a claim that lotto outcomes can be strongly forecast.
 
-The key interpretation is:
+The current evidence supports four conclusions:
 
-- If the real data remains statistically close to simulated random baselines
-- And if learned models remain close to heuristic or random performance
-
-then the evidence for strong predictive structure in historical lotto data remains limited.
-
-The current saved outputs fit that interpretation. Although `classifier_chain` leads the holdout `avg_hit`, the rolling backtest is led by `random_baseline`, and `logistic_regression` stays only marginally behind it. That gap is too small to support a strong claim that the learned models have discovered a robust predictive signal.
+- the historical distribution remains broadly compatible with random-style behavior
+- temporal baseline features are still the most stable predictive foundation
+- weather and calendar context help more as explanatory context than as direct predictive signal
+- richer internal pattern features may help some models, but robust superiority over random-style baselines remains small
 
 ## Next Steps
 
 Recommended follow-up work:
 
-- Rerun `05_model_baseline.ipynb` so that summary files are written under `models/results` and `.joblib` model artifacts are written under `models/artifacts`
-- Rerun the final export cell in `02_eda.ipynb` so that `fig_01` to `fig_05c` are regenerated correctly
-- Rerun the final export cell in `06_model_evaluation.ipynb` so that `fig_07` to `fig_10` are regenerated correctly
-- Run the full notebook pipeline and refresh saved outputs
-- Execute the pytest suite regularly during refactoring
-- Add CLI-level automation around the notebook workflow
-- Expand this report by embedding the saved figures and tables from the latest notebook run
-- Rerun weather-build, 8_weather_context_analysis.ipynb, and 9_weather_feature_modeling.ipynb after the updated rain-proxy logic so the saved weather outputs reflect non-window rain detection
-- Test recent-round-only weather modeling (for example the most recent 300 to 500 draws) to see whether later-year context behaves differently from the full-history aggregate
-- Add lagged weather-regime features such as dry/wet streak length, recent mean temperature, and short-term humidity regime shifts
-- Compare extreme-weather subsets against matched non-extreme draws rather than only broad categorical bins
-- Extend the feature-modeling notebook with tree-based importance summaries to see whether weather variables are consistently ignored or just weakly ranked
-
+- rerun `10_model_family_comparison.ipynb` with scaled MLP inputs to reduce neural-model instability
+- test recent-round-only modeling windows such as the most recent `200`, `300`, or `500` draws
+- add lagged weather-regime features such as dry/wet streaks and short-term humidity or temperature trends
+- compare extreme-weather subsets against matched non-extreme draws
+- add feature-importance or coefficient summaries so the strongest feature groups can be interpreted more directly
+- refresh legacy figure exports from `02_eda.ipynb` and `06_model_evaluation.ipynb` if those sections are needed in the final presentation
